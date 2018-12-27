@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<title>Draw</title>
+		<style>
+			* {
+				background: #222;
+				font-family: Arial, sans-serif;
+				margin: 0;
+				padding: 0;
+				color: #808;
+			}
+			body {
+				display: flex;
+				flex-direction: column;
+				height: 100vh;
+			}
+			canvas {
+				border: 1em #111 none;
+				flex-grow: 1;
+				margin: 2em;
+			}
+			.controls {
+				display: flex;
+				margin: 1em;
+				display: none;
+			}
+			.controls > * {
+				margin: 1em;
+			}
+			h1 {
+				color: #808;
+				font-size: 3em;
+				margin-top: 0.4em;
+				padding: 0em;
+				text-align: center;
+				display: none;
+			}
+		</style>
+	</head>
+	<body>
+		<h1>Draw</h1>
+		<canvas
+		id="canvas">
+		</canvas>
+		<div class="controls">
+			<div>
+				<input type="radio" id="one" name="data" value="one" checked>
+				<label for="one">One</label>
+			</div>
+			<div>
+				<input type="radio" id="two" name="data" value="two">
+				<label for="two">Two</label>
+			</div>
+			<div>
+				<input type="radio" id="both" name="data" value="both">
+				<label for="both">Both</label>
+			</div>
+		</div>
+		<script type="text/javascript">
+			function autorun() {
+				// Init
+				let canvas = document.getElementById('canvas');
+				let height = canvas.scrollHeight;
+				let width = canvas.scrollWidth;
+				let multipliers = [50, 2];
+				width =  width - width % multipliers[0];
+				height =  height - height % multipliers[0];
+				canvas.width = width;
+				canvas.height = height;
+				let worlds = [];
+				for(let i = 0 ; i < 2 ; i++) {
+					worlds.push({
+						'width': Math.floor(width / multipliers[i]),
+						'height': Math.floor(height / multipliers[i]),
+						'widthMultiplier': multipliers[i],
+						'heightMultiplier': multipliers[i]
+					});
+					worlds[i].map = [];
+					for (let x = 0 ; x < worlds[i].width ; x++) {
+						worlds[i].map.push([]);
+						for (let y = 0 ; y < worlds[i].height ; y++) {
+							worlds[i].map[x].push(0);
+						}
+					}
+				}
+				// Fill
+				worlds[0] = fillWorld(worlds[0]);
+				worlds[1] = fillWorld(worlds[1]);
+				// Draw
+				let context = canvas.getContext('2d');
+				let imageData = context.getImageData(0, 0, width, height);
+				let colors = [
+					[0, 0, 64, 255],
+					[192, 0, 128, 255],
+					[128, 0, 128, 255],
+				];
+				console.log(worlds[0]);
+				console.log(worlds[1]);
+				let world = getScaledWorld(worlds[0], Math.floor(worlds[1].width / worlds[0].width));
+				console.log(world);
+				world = mergeWorlds(world, worlds[1]);
+				imageData = drawWorld(world, imageData, colors);
+				context.putImageData(imageData, 0, 0);
+				return;
+			}
+			function getNewWorld(width, height, widthMultiplier, heightMultiplier) {
+				let world = {
+					'width': width,
+					'height': height,
+					'widthMultiplier': widthMultiplier,
+					'heightMultiplier': heightMultiplier
+				};
+				world.map = [];
+				for (let x = 0 ; x < world.width ; x++) {
+					world.map.push([]);
+					for (let y = 0 ; y < world.height ; y++) {
+						world.map[x].push(0);
+					}
+				}
+				return world;
+			}
+			function getScaledWorld(world, scaleFactor) {
+				console.log(scaleFactor);
+				let newWorld = getNewWorld(
+					world.width * scaleFactor,
+					world.height * scaleFactor,
+					world.widthMultiplier / scaleFactor,
+					world.heightMultiplier / scaleFactor
+				);
+				for (let x = 0 ; x < world.width ; x++ ) {
+					for (let y = 0 ; y < world.height ; y++ ) {
+						for (let i = x * scaleFactor ; i < (x+1) * scaleFactor ; i++ ) {
+							for (let j = y * scaleFactor ; j < (y+1) * scaleFactor ; j++ ) {
+								newWorld.map[i][j] = world.map[x][y];
+							}
+						}
+					}
+				}
+				return newWorld;
+			}
+			function mergeWorlds(worldA, worldB) {
+				for (let x = 0 ; x < Math.min(worldA.width, worldB.width) ; x++ ) {
+					for (let y = 0 ; y < Math.min(worldA.height, worldB.height) ; y++ ) {
+						if( worldA.map[x][y] !== 0 ) {
+							worldA.map[x][y] = worldB.map[x][y];
+						} else {
+							worldA.map[x][y] = worldB.map[x][y]*2;
+						}
+					}
+				}
+				return worldA;
+			}
+			function fillWorld(world) {
+				for (let i = 0 ; i < world.height * world.width * 5 ; i++) {
+					let x = getRandomInt(0, world.width-1);
+					let y = getRandomInt(0, world.height-1);
+					if( countDirectNeighbour(world, x, y) < 3 
+						&& countIndirectNeighbour(world, x, y) < 1) {
+						world.map[x][y] = 1;
+					}
+				}
+				for (let i = 0 ; i < world.height * world.width * 10 ; i++) {
+					let x = getRandomInt(0, world.width-1);
+					let y = getRandomInt(0, world.height-1);
+					if( countDirectNeighbour(world, x, y) > 1
+						&& countIndirectNeighbour(world, x, y) < 2) {
+						world.map[x][y] = 1;
+					}
+				}
+				return world;
+			}
+			function drawWorld(world, imageData, colors) {
+				for (let x = 0 ; x < world.width ; x++) {
+					for (let y = 0 ; y < world.height ; y++) {
+						imageData = addWorldPoint(imageData, x, y, colors[world.map[x][y]], world);
+					}
+				}
+				return imageData;
+			}
+			function oneNeighbourMax(world, x, y) {
+				let c = 0;
+				let r = false;
+				for (let i = Math.max(x-1, 0) ; i < Math.min(x+2, world.width) ; i++ ) {
+					for (let j = Math.max(y-1, 0) ; j < Math.min(y+2, world.height) ; j++ ) {
+						if (i === x && j === y) {
+						}
+						else if(world.map[i][j]) {
+							c++;
+						}
+					}
+				}
+				if(c < 1) {
+					r = true;
+				}
+				return r;
+			}
+			function countDirectNeighbour(world, x, y) {
+				let c = 0;
+				for (let i = Math.max(x-1, 0) ; i < Math.min(x+2, world.width) ; i++ ) {
+					for (let j = Math.max(y-1, 0) ; j < Math.min(y+2, world.height) ; j++ ) {
+						if(i !== x && j !== y) {
+						}
+						else if (i === x && j === y) {
+						}
+						else if(world.map[i][j]) {
+							c++;
+						}
+					}
+				}
+				return c;
+			}
+			function countIndirectNeighbour(world, x, y) {
+				let c = 0;
+				for (let i = Math.max(x-1, 0) ; i < Math.min(x+2, world.width) ; i++ ) {
+					for (let j = Math.max(y-1, 0) ; j < Math.min(y+2, world.height) ; j++ ) {
+						if(i === x || j === y) {
+						}
+						else if(world.map[i][j]) {
+							c++;
+						}
+					}
+				}
+				return c;
+			}
+			function getRandomInt(min, max) {
+				min = Math.ceil(min);
+				max = Math.floor(max);
+				let r = Math.floor(Math.random() * (max - min + 1)) + min;
+				return r;
+			}
+			function checkStuff(imageData, i, i2, i3) {
+				let r = (
+					(
+						imageData.data[4*i] 
+						&& !(imageData.data[4*i2] || imageData.data[4*i3])
+					)
+					|| (imageData.data[4*i2] && imageData.data[4*i3])
+				);
+				return r;
+			}
+			function addPoint(imageData, x, y, color) {
+				let i = y * (imageData.width ) + x;
+				imageData.data[4*i] = color[0];
+				imageData.data[4*i+1] = color[1];
+				imageData.data[4*i+2] = color[2];
+				imageData.data[4*i+3] = color[3];
+				return imageData;
+			}
+			function addWorldPoint(imageData, x, y, color, world) {
+				x = x * world.widthMultiplier;
+				y = y * world.heightMultiplier;
+				for (let x1 = x ; x1 < x + world.widthMultiplier ; x1++) {
+					for (let y1 = y ; y1 < y + world.heightMultiplier ; y1++) {
+						imageData = addPoint(imageData, x1, y1, color);
+					}
+				}
+				return imageData;
+			}
+			if (document.addEventListener) {
+				document.addEventListener("DOMContentLoaded", autorun, false);
+			} else if (document.attachEvent) { 
+				document.attachEvent("onreadystatechange", autorun);
+			} else {
+				window.onload = autorun;
+			}
+		</script>
+	</body>
+</html>
