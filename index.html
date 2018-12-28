@@ -15,11 +15,11 @@
 				display: flex;
 				flex-direction: column;
 				height: 100vh;
+				align-content: strech;
 			}
 			canvas {
 				border: 1em #111 none;
 				flex-grow: 1;
-				margin: 2em;
 			}
 			.controls {
 				display: flex;
@@ -32,7 +32,7 @@
 			h1 {
 				color: #808;
 				font-size: 3em;
-				margin-top: 0.4em;
+				margin: auto;
 				padding: 0em;
 				text-align: center;
 				display: none;
@@ -62,45 +62,49 @@
 			function autorun() {
 				// Init
 				let canvas = document.getElementById('canvas');
-				let height = canvas.scrollHeight;
-				let width = canvas.scrollWidth;
-				let multipliers = [50, 2];
+				let multipliers = [100, 10, 1];
+				let width = canvas.scrollWidth - multipliers[0];
+				let height = canvas.scrollHeight - multipliers[0];
+				
+				canvas.style.width = width - width % multipliers[0];
+				canvas.style.height = height - height % multipliers[0];
+				//width = canvas.scrollWidth;
+				//height = canvas.scrollHeight;
+				canvas.style.margin = "auto";
+				canvas.style.flexGrow = "0";
+				
 				width =  width - width % multipliers[0];
 				height =  height - height % multipliers[0];
 				canvas.width = width;
 				canvas.height = height;
 				let worlds = [];
-				for(let i = 0 ; i < 2 ; i++) {
-					worlds.push({
-						'width': Math.floor(width / multipliers[i]),
-						'height': Math.floor(height / multipliers[i]),
-						'widthMultiplier': multipliers[i],
-						'heightMultiplier': multipliers[i]
-					});
-					worlds[i].map = [];
-					for (let x = 0 ; x < worlds[i].width ; x++) {
-						worlds[i].map.push([]);
-						for (let y = 0 ; y < worlds[i].height ; y++) {
-							worlds[i].map[x].push(0);
-						}
-					}
+				for(let i = 0 ; i < 3 ; i++) {
+					worlds.push(
+						getNewWorld(
+							Math.floor(width / multipliers[i]),
+							Math.floor(height / multipliers[i]),
+							multipliers[i],
+							multipliers[i]
+						)
+					);
+					worlds[i] = fillWorld(worlds[i]);
 				}
-				// Fill
-				worlds[0] = fillWorld(worlds[0]);
-				worlds[1] = fillWorld(worlds[1]);
 				// Draw
 				let context = canvas.getContext('2d');
 				let imageData = context.getImageData(0, 0, width, height);
 				let colors = [
-					[0, 0, 64, 255],
-					[192, 0, 128, 255],
-					[128, 0, 128, 255],
+					[0, 0, 0, 255],
+					[64, 64, 64, 255],
+					[128, 128, 128, 255],
+					[255, 255, 255, 255]
 				];
-				console.log(worlds[0]);
-				console.log(worlds[1]);
-				let world = getScaledWorld(worlds[0], Math.floor(worlds[1].width / worlds[0].width));
-				console.log(world);
+				let world = worlds[0];
+				world = getScaledWorld(world, Math.floor(worlds[1].width / world.width));
 				world = mergeWorlds(world, worlds[1]);
+				
+				world = getScaledWorld(world, Math.floor(worlds[2].width / world.width));
+				world = mergeWorlds(world, worlds[2]);
+				
 				imageData = drawWorld(world, imageData, colors);
 				context.putImageData(imageData, 0, 0);
 				return;
@@ -143,29 +147,27 @@
 			function mergeWorlds(worldA, worldB) {
 				for (let x = 0 ; x < Math.min(worldA.width, worldB.width) ; x++ ) {
 					for (let y = 0 ; y < Math.min(worldA.height, worldB.height) ; y++ ) {
-						if( worldA.map[x][y] !== 0 ) {
-							worldA.map[x][y] = worldB.map[x][y];
-						} else {
-							worldA.map[x][y] = worldB.map[x][y]*2;
-						}
+						worldA.map[x][y] = worldA.map[x][y] + worldB.map[x][y];
 					}
 				}
 				return worldA;
 			}
 			function fillWorld(world) {
+				let a = getRandomInt(1, 3);
+				let b = getRandomInt(1, 3);
 				for (let i = 0 ; i < world.height * world.width * 5 ; i++) {
 					let x = getRandomInt(0, world.width-1);
 					let y = getRandomInt(0, world.height-1);
-					if( countDirectNeighbour(world, x, y) < 3 
-						&& countIndirectNeighbour(world, x, y) < 1) {
+					if( countDirectNeighbour(world, x, y) < a
+						&& countIndirectNeighbour(world, x, y) < b) {
 						world.map[x][y] = 1;
 					}
 				}
 				for (let i = 0 ; i < world.height * world.width * 10 ; i++) {
 					let x = getRandomInt(0, world.width-1);
 					let y = getRandomInt(0, world.height-1);
-					if( countDirectNeighbour(world, x, y) > 1
-						&& countIndirectNeighbour(world, x, y) < 2) {
+					if( countDirectNeighbour(world, x, y) > 2
+						&& countIndirectNeighbour(world, x, y) < 3) {
 						world.map[x][y] = 1;
 					}
 				}
