@@ -5,7 +5,7 @@
 		<title>Draw</title>
 		<style>
 			* {
-				background: #222;
+				background: #000;
 				font-family: Arial, sans-serif;
 				margin: 0;
 				padding: 0;
@@ -59,26 +59,40 @@
 			</div>
 		</div>
 		<script type="text/javascript">
-			function autorun() {
+			async function autorun() {
 				// Init
+				console.log('Hello');
 				let canvas = document.getElementById('canvas');
-				let multipliers = [100, 10, 1];
-				let width = canvas.scrollWidth - multipliers[0];
-				let height = canvas.scrollHeight - multipliers[0];
-				
+				let multipliers = [125, 25, 5];
+				multipliers = [100, 10, 1];
+				let maxTime = 1000;
+				let width = canvas.scrollWidth - multipliers[0]/2;
+				let height = canvas.scrollHeight - multipliers[0]/2;
 				canvas.style.width = width - width % multipliers[0];
 				canvas.style.height = height - height % multipliers[0];
-				//width = canvas.scrollWidth;
-				//height = canvas.scrollHeight;
 				canvas.style.margin = "auto";
 				canvas.style.flexGrow = "0";
-				
 				width =  width - width % multipliers[0];
 				height =  height - height % multipliers[0];
 				canvas.width = width;
 				canvas.height = height;
+				let context = canvas.getContext('2d');
+				let imageData = context.getImageData(0, 0, width, height);
+				let colors = null;
 				let worlds = [];
-				for(let i = 0 ; i < 3 ; i++) {
+				let world = null;
+				let t0 = performance.now();
+				let t1 = performance.now();
+				let diff = 1;
+				let diffs = [];
+				for(let i = 0 ; i < multipliers.length ; i++) {
+					diffs.push(1);
+				}
+				for(let i = 0 ; i < multipliers.length ; i++) {
+					if(!i) {
+						worlds = [];
+						colors = getColors(multipliers.length);
+					}
 					worlds.push(
 						getNewWorld(
 							Math.floor(width / multipliers[i]),
@@ -88,26 +102,62 @@
 						)
 					);
 					worlds[i] = fillWorld(worlds[i]);
+					if(i) {
+						world = getScaledWorld(world, Math.floor(worlds[i].width / world.width));
+						world = mergeWorlds(world, worlds[i]);
+					} else {
+						world = worlds[i];
+					}
+					imageData = drawWorld(world, imageData, colors);
+					
+					context.putImageData(imageData, 0, 0);
+					t1 = performance.now();
+					for(let i = 0 ; i < diffs.length - 1 ; i++) {
+						diffs[i] = diffs[i+1];
+					}
+					diff = t1 - t0;
+					diffs[diffs.length - 1] = diff;
+					if(maxTime < diff) {
+						maxTime = diff;
+					}
+					await sleep(maxTime - diffs[0]);
+					t0 = performance.now();
+					if(i === multipliers.length-1) {
+						i = -1;
+					}
 				}
-				// Draw
-				let context = canvas.getContext('2d');
-				let imageData = context.getImageData(0, 0, width, height);
-				let colors = [
-					[0, 0, 0, 255],
-					[64, 64, 64, 255],
-					[128, 128, 128, 255],
-					[255, 255, 255, 255]
-				];
-				let world = worlds[0];
-				world = getScaledWorld(world, Math.floor(worlds[1].width / world.width));
-				world = mergeWorlds(world, worlds[1]);
-				
-				world = getScaledWorld(world, Math.floor(worlds[2].width / world.width));
-				world = mergeWorlds(world, worlds[2]);
-				
-				imageData = drawWorld(world, imageData, colors);
-				context.putImageData(imageData, 0, 0);
 				return;
+			}
+			function getColors (count) {
+				let colors = [];
+				let color = [
+					getRandomInt(0, 255),
+					getRandomInt(0, 255),
+					getRandomInt(0, 255)
+				];
+				let max = Math.max(Math.max(color[0], color[1]), color[2]);
+				color[0] = color[0] / max * 255;
+				color[1] = color[1] / max * 255;
+				color[2] = color[2] / max * 255;
+				for (let i = 0 ; i < 256 ; i += 255 / count) {
+					colors.push([
+						i * color[0] / 255, 
+						i * color[1] / 255, 
+						i * color[2] / 255, 
+						255
+					]);
+				}
+				return colors;
+			}
+			function getColors2 (count) {
+				let colors = [];
+				for (let i = 0 ; i < count+1 ; i ++) {
+					colors.push(getColors(count)[i])
+				}
+				return colors;
+			}
+			function sleep(ms) {
+				return new Promise(resolve => setTimeout(resolve, ms));
 			}
 			function getNewWorld(width, height, widthMultiplier, heightMultiplier) {
 				let world = {
@@ -126,7 +176,6 @@
 				return world;
 			}
 			function getScaledWorld(world, scaleFactor) {
-				console.log(scaleFactor);
 				let newWorld = getNewWorld(
 					world.width * scaleFactor,
 					world.height * scaleFactor,
@@ -181,23 +230,6 @@
 				}
 				return imageData;
 			}
-			function oneNeighbourMax(world, x, y) {
-				let c = 0;
-				let r = false;
-				for (let i = Math.max(x-1, 0) ; i < Math.min(x+2, world.width) ; i++ ) {
-					for (let j = Math.max(y-1, 0) ; j < Math.min(y+2, world.height) ; j++ ) {
-						if (i === x && j === y) {
-						}
-						else if(world.map[i][j]) {
-							c++;
-						}
-					}
-				}
-				if(c < 1) {
-					r = true;
-				}
-				return r;
-			}
 			function countDirectNeighbour(world, x, y) {
 				let c = 0;
 				for (let i = Math.max(x-1, 0) ; i < Math.min(x+2, world.width) ; i++ ) {
@@ -230,16 +262,6 @@
 				min = Math.ceil(min);
 				max = Math.floor(max);
 				let r = Math.floor(Math.random() * (max - min + 1)) + min;
-				return r;
-			}
-			function checkStuff(imageData, i, i2, i3) {
-				let r = (
-					(
-						imageData.data[4*i] 
-						&& !(imageData.data[4*i2] || imageData.data[4*i3])
-					)
-					|| (imageData.data[4*i2] && imageData.data[4*i3])
-				);
 				return r;
 			}
 			function addPoint(imageData, x, y, color) {
