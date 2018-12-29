@@ -6,10 +6,8 @@
 		<style>
 			* {
 				background: #000;
-				font-family: Arial, sans-serif;
 				margin: 0;
 				padding: 0;
-				color: #808;
 			}
 			body {
 				display: flex;
@@ -18,46 +16,13 @@
 				align-content: strech;
 			}
 			canvas {
-				border: 1em #111 none;
+				border: none;
 				flex-grow: 1;
-			}
-			.controls {
-				display: flex;
-				margin: 1em;
-				display: none;
-			}
-			.controls > * {
-				margin: 1em;
-			}
-			h1 {
-				color: #808;
-				font-size: 3em;
-				margin: auto;
-				padding: 0em;
-				text-align: center;
-				display: none;
 			}
 		</style>
 	</head>
 	<body>
-		<h1>Draw</h1>
-		<canvas
-		id="canvas">
-		</canvas>
-		<div class="controls">
-			<div>
-				<input type="radio" id="one" name="data" value="one" checked>
-				<label for="one">One</label>
-			</div>
-			<div>
-				<input type="radio" id="two" name="data" value="two">
-				<label for="two">Two</label>
-			</div>
-			<div>
-				<input type="radio" id="both" name="data" value="both">
-				<label for="both">Both</label>
-			</div>
-		</div>
+		<canvas id="canvas"></canvas>
 		<script type="text/javascript">
 			const DO_MOVE = true;
 			let maxTime = 2000;
