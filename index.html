@@ -70,9 +70,9 @@
 				// Init
 				const DO_MOVE = true;
 				let multipliers = [1];
-				let multMin = 3;
+				let multMin = 4;
 				let multMax = 8;
-				let max = Math.floor(Math.min(window.innerWidth, window.innerHeight) / multMax);
+				let max = Math.floor(Math.min(window.innerWidth, window.innerHeight) / multMin);
 				console.log(max);
 				for (let i = 1 ; i < max ; i ++) {
 					let u = multipliers[i-1] * getRandomInt(multMin, Math.max(multMin, Math.min(multMax, Math.floor(max / multipliers[i-1] ))));
