@@ -62,10 +62,11 @@
 			async function autorun() {
 				// Init
 				console.log('Hello');
-				let canvas = document.getElementById('canvas');
+				const DO_MOVE = false;
 				let multipliers = [125, 25, 5];
 				multipliers = [100, 10, 1];
 				let maxTime = 1000;
+				let canvas = document.getElementById('canvas');
 				let width = canvas.scrollWidth - multipliers[0]/2;
 				let height = canvas.scrollHeight - multipliers[0]/2;
 				canvas.style.width = width - width % multipliers[0];
@@ -101,7 +102,7 @@
 							multipliers[i]
 						)
 					);
-					worlds[i] = fillWorld(worlds[i]);
+					worlds[i] = fillWorldFast(worlds[i]);
 					if(i) {
 						world = getScaledWorld(world, Math.floor(worlds[i].width / world.width));
 						world = mergeWorlds(world, worlds[i]);
@@ -111,23 +112,57 @@
 					imageData = drawWorld(world, imageData, colors);
 					
 					context.putImageData(imageData, 0, 0);
-					t1 = performance.now();
-					for(let i = 0 ; i < diffs.length - 1 ; i++) {
-						diffs[i] = diffs[i+1];
+					if(DO_MOVE) {
+						await sleep(maxTime);
+					} else {
+						t1 = performance.now();
+						for(let i = 0 ; i < diffs.length - 1 ; i++) {
+							diffs[i] = diffs[i+1];
+						}
+						diff = t1 - t0;
+						console.log(diff);
+						diffs[diffs.length - 1] = diff;
+						if(maxTime < diff) {
+							maxTime = diff;
+						}
+						await sleep(maxTime - diffs[0]);
+						t0 = performance.now();
 					}
-					diff = t1 - t0;
-					diffs[diffs.length - 1] = diff;
-					if(maxTime < diff) {
-						maxTime = diff;
-					}
-					await sleep(maxTime - diffs[0]);
-					t0 = performance.now();
 					if(i === multipliers.length-1) {
 						i = -1;
+						if(DO_MOVE) {
+							for(let k = 0 ; k < world.width ; k++) {
+								world = moveWorld(world, 1, 0);
+								imageData = drawWorld(world, imageData, colors);
+								context.putImageData(imageData, 0, 0);
+								await sleep(1);
+							}
+							await sleep(maxTime);
+						} else {
+						
+						}
 					}
 				}
 				return;
 			}
+			function moveWorld(world, dx, dy) {
+				let newWorld = getNewWorld(
+					world.width,
+					world.height, 
+					world.widthMultiplier, 
+					world.heightMultiplier
+				);
+				for (let x = 0 ; x < world.width ; x++) {
+					for (let y = 0 ; y < world.height ; y++) {
+						let i = (x + dx + world.width) % world.width;
+						let j = (y + dy + world.height) % world.height;
+						newWorld.map[x][y] = world.map[i][j];
+					}
+				}
+				return newWorld;
+			}
+			
+			
 			function getColors (count) {
 				let colors = [];
 				let color = [
@@ -201,22 +236,63 @@
 				}
 				return worldA;
 			}
-			function fillWorld(world) {
-				let a = getRandomInt(1, 3);
-				let b = getRandomInt(1, 3);
-				for (let i = 0 ; i < world.height * world.width * 5 ; i++) {
+			function fillWorldFast(world) {
+				let a = getRandomInt(1, 4);
+				let b = getRandomInt(1, 4);
+				for (let i = 0 ; i < world.height * world.width ; i++) {
 					let x = getRandomInt(0, world.width-1);
 					let y = getRandomInt(0, world.height-1);
-					if( countDirectNeighbour(world, x, y) < a
-						&& countIndirectNeighbour(world, x, y) < b) {
+					if( countDirectNeighbourAround(world, x, y) < a
+						&& countIndirectNeighbourAround(world, x, y) < b) {
 						world.map[x][y] = 1;
 					}
 				}
-				for (let i = 0 ; i < world.height * world.width * 10 ; i++) {
+				for (let i = 0 ; i < world.height * world.width ; i++) {
 					let x = getRandomInt(0, world.width-1);
 					let y = getRandomInt(0, world.height-1);
-					if( countDirectNeighbour(world, x, y) > 2
-						&& countIndirectNeighbour(world, x, y) < 3) {
+					if( countDirectNeighbourAround(world, x, y) > 2
+						&& countIndirectNeighbourAround(world, x, y) < 3) {
+						world.map[x][y] = 1;
+					}
+				}
+				return world;
+			}
+			function fillWorldSlow() {
+				let a = getRandomInt(1, 4);
+				let b = getRandomInt(1, 4);
+				let xys = [];
+				for (let x = 0 ; x < world.width ; x++ ) {
+					for (let y = 0 ; y < world.height ; y++ ) {
+						xys.push([x, y]);
+					}
+				}
+				let x = null;
+				let y = null;
+				while(xys.length) {
+					let i = getRandomInt(0, xys.length-1);
+					x = xys[i][0];
+					y = xys[i][1];
+					xys.splice(i,1);
+					if( countDirectNeighbourAround(world, x, y) < a
+						&& countIndirectNeighbourAround(world, x, y) < b) {
+						world.map[x][y] = 1;
+					}
+				}
+				xys = [];
+				for (let x = 0 ; x < world.width ; x++ ) {
+					for (let y = 0 ; y < world.height ; y++ ) {
+						xys.push[[x, y]];
+					}
+				}
+				x = null;
+				y = null;
+				while(xys.length) {
+					let i = getRandomInt(0, xys.length-1);
+					x = xys[i][0];
+					y = xys[i][1];
+					xys.splice(i,1);
+					if( countDirectNeighbourAround(world, x, y) > 2
+						&& countIndirectNeighbourAround(world, x, y) < 3) {
 						world.map[x][y] = 1;
 					}
 				}
@@ -249,6 +325,38 @@
 				let c = 0;
 				for (let i = Math.max(x-1, 0) ; i < Math.min(x+2, world.width) ; i++ ) {
 					for (let j = Math.max(y-1, 0) ; j < Math.min(y+2, world.height) ; j++ ) {
+						if(i === x || j === y) {
+						}
+						else if(world.map[i][j]) {
+							c++;
+						}
+					}
+				}
+				return c;
+			}
+			function countDirectNeighbourAround(world, x, y) {
+				let c = 0;
+				for (let a = x - 1 ; a < x + 2 ; a++ ) {
+					for (let b = y - 1 ; b < y + 2 ; b++ ) {
+						let i = (a + world.width) % world.width;
+						let j = (b + world.height) % world.height;
+						if(i !== x && j !== y) {
+						}
+						else if (i === x && j === y) {
+						}
+						else if(world.map[i][j]) {
+							c++;
+						}
+					}
+				}
+				return c;
+			}
+			function countIndirectNeighbourAround(world, x, y) {
+				let c = 0;
+				for (let a = x - 1 ; a < x + 2 ; a++ ) {
+					for (let b = y - 1 ; b < y + 2 ; b++ ) {
+						let i = (a + world.width) % world.width;
+						let j = (b + world.height) % world.height;
 						if(i === x || j === y) {
 						}
 						else if(world.map[i][j]) {
