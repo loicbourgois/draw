@@ -59,6 +59,7 @@
 			</div>
 		</div>
 		<script type="text/javascript">
+			const DO_MOVE = true;
 			let maxTime = 2000;
 			async function autorun() {
 				console.log('Hello');
@@ -68,12 +69,10 @@
 			}
 			async function main() {
 				// Init
-				const DO_MOVE = true;
 				let multipliers = [1];
 				let multMin = 4;
 				let multMax = 8;
 				let max = Math.floor(Math.min(window.innerWidth, window.innerHeight) / multMin);
-				console.log(max);
 				for (let i = 1 ; i < max ; i ++) {
 					let u = multipliers[i-1] * getRandomInt(multMin, Math.max(multMin, Math.min(multMax, Math.floor(max / multipliers[i-1] ))));
 					if(u > max) {
@@ -84,7 +83,6 @@
 				multipliers.sort(function(a, b) {
 					return b - a;
 				});
-				console.log(multipliers);
 				let width = window.innerWidth - multipliers[0]/2;
 				let height = window.innerHeight - multipliers[0]/2;
 				let canvas = document.getElementById('canvas');
@@ -98,7 +96,7 @@
 				canvas.height = height;
 				let context = canvas.getContext('2d');
 				let imageData = context.getImageData(0, 0, width, height);
-				let colors = null;
+				let colors = getColors(multipliers.length);
 				let worlds = [];
 				let world = null;
 				let t0 = performance.now();
@@ -108,11 +106,14 @@
 				for(let i = 0 ; i < multipliers.length ; i++) {
 					diffs.push(1);
 				}
+				logColorsAndMultipliers(colors, multipliers);
+				
 				for(let i = 0 ; i < multipliers.length ; i++) {
-					if(!i) {
+					/*if(!i) {
 						worlds = [];
 						colors = getColors(multipliers.length);
-					}
+						console.log(colors);
+					}*/
 					worlds.push(
 						getNewWorld(
 							Math.floor(width / multipliers[i]),
@@ -136,7 +137,6 @@
 							diffs[i] = diffs[i+1];
 						}
 						diff = t1 - t0;
-						console.log(diff);
 						diffs[diffs.length - 1] = diff;
 						if(maxTime < diff) {
 							maxTime = diff;
@@ -171,6 +171,23 @@
 						}
 					}
 				}
+			}
+			function logColorsAndMultipliers(colors, multipliers) {
+				let str = 'multipliers';
+				for (let i = 0 ; i < multipliers.length ; i++) {
+					if(i) {
+					}
+					str += '\n\t' + multipliers[i];
+				}
+				str += '\ncolors\n';
+				for (let i = 0 ; i < colors.length ; i++) {
+					str += '\t#';
+					for (let j = 0 ; j < colors[i].length ; j++) {
+						str += ('00' + colors[i][j].toString(16)).substr(-2);
+					}
+					str += '\n';
+				}
+				console.log(str);
 			}
 			function getDirection(world) {
 				let directions = [
@@ -212,20 +229,28 @@
 			}
 			function getColors (count) {
 				let colors = [];
-				let color = [
-					getRandomInt(0, 255),
-					getRandomInt(0, 255),
-					getRandomInt(0, 255)
-				];
-				let max = Math.max(Math.max(color[0], color[1]), color[2]);
-				color[0] = color[0] / max * 255;
-				color[1] = color[1] / max * 255;
-				color[2] = color[2] / max * 255;
-				for (let i = 0 ; i < 256 ; i += 255 / count) {
+				let baseCount = 2;
+				let baseColors = [];
+				for (let i = 0 ; i < baseCount ; i++) {
+					baseColors.push(
+						[
+							getRandomInt(0, 255),
+							getRandomInt(0, 255),
+							getRandomInt(0, 255)
+						]
+					);
+					let max = Math.max(Math.max(baseColors[i][0], baseColors[i][1]), baseColors[i][2]);
+					baseColors[i][0] = baseColors[i][0] / max * 255;
+					baseColors[i][1] = baseColors[i][1] / max * 255;
+					baseColors[i][2] = baseColors[i][2] / max * 255;
+				}
+				for (let i = 0 ; i < count+1 ; i ++) {
+					let ii = Math.max(0, Math.floor((i-1)/baseCount));
+					ii = i % baseCount;
 					colors.push([
-						i * color[0] / 255, 
-						i * color[1] / 255, 
-						i * color[2] / 255, 
+						Math.floor(i * baseColors[ii][0] / count), 
+						Math.floor(i * baseColors[ii][1] / count), 
+						Math.floor(i * baseColors[ii][2] / count), 
 						255
 					]);
 				}
