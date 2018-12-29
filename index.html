@@ -59,16 +59,34 @@
 			</div>
 		</div>
 		<script type="text/javascript">
+			let maxTime = 2000;
 			async function autorun() {
-				// Init
 				console.log('Hello');
-				const DO_MOVE = false;
-				let multipliers = [125, 25, 5];
-				multipliers = [100, 10, 1];
-				let maxTime = 1000;
+				while(true) {
+					await main();
+				}
+			}
+			async function main() {
+				// Init
+				const DO_MOVE = true;
+				let multipliers = [1];
+				let max = 200;
+				let multMin = 3;
+				let multMax = 8;
+				for (let i = 1 ; i < max ; i ++) {
+					let u = multipliers[i-1] * getRandomInt(multMin, Math.max(multMin, Math.min(multMax, Math.floor(max / multipliers[i-1] ))));
+					if(u > 200) {
+						break;
+					}
+					multipliers.push(u);
+				}
+				multipliers.sort(function(a, b) {
+					return b - a;
+				});
+				console.log(multipliers);
+				let width = window.innerWidth - multipliers[0]/2;
+				let height = window.innerHeight - multipliers[0]/2;
 				let canvas = document.getElementById('canvas');
-				let width = canvas.scrollWidth - multipliers[0]/2;
-				let height = canvas.scrollHeight - multipliers[0]/2;
 				canvas.style.width = width - width % multipliers[0];
 				canvas.style.height = height - height % multipliers[0];
 				canvas.style.margin = "auto";
@@ -112,9 +130,9 @@
 					imageData = drawWorld(world, imageData, colors);
 					
 					context.putImageData(imageData, 0, 0);
-					if(DO_MOVE) {
+					/*if(DO_MOVE) {
 						await sleep(maxTime);
-					} else {
+					} else */{
 						t1 = performance.now();
 						for(let i = 0 ; i < diffs.length - 1 ; i++) {
 							diffs[i] = diffs[i+1];
@@ -129,21 +147,45 @@
 						t0 = performance.now();
 					}
 					if(i === multipliers.length-1) {
-						i = -1;
 						if(DO_MOVE) {
-							for(let k = 0 ; k < world.width ; k++) {
-								world = moveWorld(world, 1, 0);
+							let dk = 1;
+							let direction = getDirection(world);
+							let dx = direction.dx;
+							let dy = direction.dy;
+							let kmax = direction.kmax; 
+							for(let k = 0 ; k < kmax ; k += dk) {
+								world = moveWorld(world, dx, dy);
 								imageData = drawWorld(world, imageData, colors);
 								context.putImageData(imageData, 0, 0);
 								await sleep(1);
 							}
 							await sleep(maxTime);
 						} else {
-						
 						}
 					}
 				}
-				return;
+			}
+			function getDirection(world) {
+				let directions = [
+					{
+						dx: 1,
+						dy: 0,
+						kmax: world.width
+					}, {
+						dx: -1,
+						dy: 0,
+						kmax: world.width
+					}, {
+						dx: 0,
+						dy: 1,
+						kmax: world.height
+					}, {
+						dx: 0,
+						dy: -1,
+						kmax: world.height
+					}, 
+				];
+				return directions[getRandomInt(0,3)];
 			}
 			function moveWorld(world, dx, dy) {
 				let newWorld = getNewWorld(
