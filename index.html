@@ -61,6 +61,7 @@
 		<script type="text/javascript">
 			const DO_MOVE = true;
 			let maxTime = 2000;
+			let baseCount = 2;
 			async function autorun() {
 				console.log('Hello');
 				while(true) {
@@ -229,7 +230,6 @@
 			}
 			function getColors (count) {
 				let colors = [];
-				let baseCount = 2;
 				let baseColors = [];
 				for (let i = 0 ; i < baseCount ; i++) {
 					baseColors.push(
@@ -311,6 +311,8 @@
 			function fillWorldFast(world) {
 				let a = getRandomInt(1, 4);
 				let b = getRandomInt(1, 4);
+				let c = getRandomInt(1, 3);
+				let d = getRandomInt(1, 3);
 				for (let i = 0 ; i < world.height * world.width ; i++) {
 					let x = getRandomInt(0, world.width-1);
 					let y = getRandomInt(0, world.height-1);
@@ -322,8 +324,8 @@
 				for (let i = 0 ; i < world.height * world.width ; i++) {
 					let x = getRandomInt(0, world.width-1);
 					let y = getRandomInt(0, world.height-1);
-					if( countDirectNeighbourAround(world, x, y) > 2
-						&& countIndirectNeighbourAround(world, x, y) < 3) {
+					if( countDirectNeighbourAround(world, x, y) > c
+						&& countIndirectNeighbourAround(world, x, y) < d) {
 						world.map[x][y] = 1;
 					}
 				}
